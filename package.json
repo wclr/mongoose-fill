@@ -1,0 +1,31 @@
+{
+  "name": "mongoose-fill",
+  "version": "1.0.0",
+  "description": "Mongoose.js add-on that adds virtual (temporary) async fileds API",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/whitecolor/mongoose-fill.git"
+  },
+  "keywords": [
+    "mongoosejs",
+    "mongodb",
+    "populate"
+  ],
+  "author": "whitecolor",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/whitecolor/mongoose-fill/issues"
+  },
+  "homepage": "https://github.com/whitecolor/mongoose-fill#readme",
+  "devDependencies": {
+    "tape": "^4.2.0",
+    "mongoose": "^4.0.5"
+  },
+  "dependencies": {
+    "async": "^1.4.2"
+  }
+}
