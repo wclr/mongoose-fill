@@ -5,6 +5,7 @@ var util = require('util')
 var fillDoc = function(doc, __fill, cb){
 
     var args = []
+
     if (__fill.opts !== undefined){
         args.push(__fill.opts)
     }
@@ -16,10 +17,13 @@ var fillDoc = function(doc, __fill, cb){
     } else if (__fill.fill.value) {
         var props = __fill.props,
             prop = props.length == 1 && props[0]
+
+        var multipleProps = __fill.fill.props.length > 1
+
         //args.unshift(doc)
         args.push(function(err, val){
             if (prop){
-                doc[prop] = val
+                doc[prop] = multipleProps ? val[prop] : val
             } else {
                 props.forEach(function(prop){
                     doc[prop] = val[prop]
@@ -37,7 +41,7 @@ var _exec = mongoose.Query.prototype.exec
 
 mongoose.Query.prototype.exec = function (op, cb) {
     var __fills = this.__fills;
-    console.log('query exec', this.options, 'this._conditions', this._conditions, this._fields)
+    //console.log('query exec', this.options, 'this._conditions', this._conditions, this._fields)
 
     if (!__fills) {
         return _exec.apply(this, arguments);
@@ -50,9 +54,31 @@ mongoose.Query.prototype.exec = function (op, cb) {
         op = null;
     }
 
+
+
     if (cb) {
         promise.onResolve(cb);
     }
+
+    var query = this
+
+    var __query = {
+        conditions: this._conditions,
+        fields: this._fields,
+        options: this.options
+    }
+
+    __fills.forEach(function(__fill){
+
+        if (__fill.fill.query){
+            var result = __fill.fill.query.apply(query, [__query, function(){
+
+            }])
+            if (result !== undefined){
+                __fill.executed = true
+            }
+        }
+    })
 
     _exec.call(this, op, function (err, docs) {
         //var resolve = promise.resolve.bind(promise);
@@ -62,7 +88,9 @@ mongoose.Query.prototype.exec = function (op, cb) {
             cb && cb(err, docs)
         } else {
             async.map(__fills, function(__fill, cb){
+                if (__fill.executed){
 
+                }
                 // TODO: make this also if there is only multi methods when one doc
                 if (util.isArray(docs)){
                     var args = []
@@ -126,6 +154,8 @@ mongoose.Schema.prototype.fill = function(props, def) {
 
     props = props.split(' ')
 
+    def.props = props
+
     props.forEach(function (prop) {
         self.statics.__fill[prop] = def
 
@@ -150,10 +180,22 @@ mongoose.Schema.prototype.fill = function(props, def) {
             return defFiller
         },
         fullMulti: function(cb){
-            def.fullMulty = cb
+            def.fullMulti = cb
+            return defFiller
+        },
+        query: function(cb){
+            def.query = cb
+            return defFiller
+        },
+
+        debug: function(val){
+            def.debug = val
             return defFiller
         }
     }
+
+    defFiller.get = defFiller.value
+
     return defFiller
 }
 
@@ -161,6 +203,10 @@ var addFills = function(__fills, Model, props, opts){
 
     props.split(' ').forEach(function(prop){
         var fill = Model.__fill[prop]
+        if (!fill){
+            console.warn('mongoose-fill: fill for', prop, 'not found.')
+            return
+        }
         fill.db = Model.db
         if (fill){
             // check if fill already added
@@ -189,24 +235,25 @@ mongoose.Query.prototype.fill = function(props, opts) {
     return this
 };
 
-mongoose.Model.prototype.fill = function(prop, opts, cb) {
+mongoose.Model.prototype.fill = function(props, opts, cb) {
 
     var doc = this;
     var Model = this.constructor;
-
-    var fill = Model.__fill[prop]
 
     if (typeof opts === 'function') {
         cb = opts;
         opts = undefined;
     }
 
-    if(fill){
-        fillDoc(doc, {props: [prop], fill: fill, opts: opts}, cb)
-    } else {
-        console.warn('No mongoose fill for', prop, 'found')
-        cb(null, doc)
-    }
+    var __fills = []
+
+    addFills(__fills, Model, props, opts)
+
+    async.map(__fills, function(__fill, cb){
+        fillDoc(doc, __fill, cb)
+    }, function(err){
+        cb(err, doc)
+    })
 
     return this
 };
