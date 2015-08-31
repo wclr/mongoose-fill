@@ -37,13 +37,48 @@ var fillDoc = function(doc, __fill, cb){
     }
 }
 
+var addFills = function(__fills, Model, props, opts){
+
+    var added = false
+    props.split(' ').forEach(function(prop){
+
+        var fill = Model.__fill[prop]
+        if (!fill){
+            return
+        }
+
+        added = true
+        fill.db = Model.db
+        if (fill){
+            // check if fill already added
+            var __fill = __fills.filter(function(__f){return __f.fill == fill})[0]
+            if (__fill){
+                if (__fill.props.indexOf(prop) < 0){
+                    __fill.props.push(prop)
+                }
+            } else {
+                __fills.push({fill: fill, opts: opts, props: [prop]})
+            }
+        }
+    })
+    return added
+}
+
 var _exec = mongoose.Query.prototype.exec
 
 mongoose.Query.prototype.exec = function (op, cb) {
-    var __fills = this.__fills;
+    var __fills = this.__fills || [];
     //console.log('query exec', this.options, 'this._conditions', this._conditions, this._fields)
 
-    if (!__fills) {
+    var query = this
+
+    Object.keys(this._fields).forEach(function(f){
+        if (query._fields[f] == 1){
+            addFills(__fills, query.model, f)
+        }
+    })
+
+    if (!__fills.length) {
         return _exec.apply(this, arguments);
     }
 
@@ -60,7 +95,7 @@ mongoose.Query.prototype.exec = function (op, cb) {
         promise.onResolve(cb);
     }
 
-    var query = this
+
 
     var __query = {
         conditions: this._conditions,
@@ -197,30 +232,6 @@ mongoose.Schema.prototype.fill = function(props, def) {
     defFiller.get = defFiller.value
 
     return defFiller
-}
-
-var addFills = function(__fills, Model, props, opts){
-
-    props.split(' ').forEach(function(prop){
-        var fill = Model.__fill[prop]
-        if (!fill){
-            console.warn('mongoose-fill: fill for', prop, 'not found.')
-            return
-        }
-        fill.db = Model.db
-        if (fill){
-            // check if fill already added
-            var __fill = __fills.filter(function(__f){return __f.fill == fill})[0]
-            if (__fill){
-                if (__fill.props.indexOf(prop) < 0){
-                    __fill.props.push(prop)
-                }
-            } else {
-                __fills.push({fill: fill, opts: opts, props: [prop]})
-            }
-        }
-
-    })
 }
 
 

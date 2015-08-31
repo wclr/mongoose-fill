@@ -63,8 +63,8 @@ test('create users', function (t) {
     t.plan(1)
 
     var usersData = [
-        {_id: 1, name: 'Alex'},
-        {_id: 2, name: 'Jane'}
+        {_id: 1, name: 'Alex', age: 10},
+        {_id: 2, name: 'Jane', age: 12}
     ]
 
     User.create(usersData, t.error)
@@ -81,10 +81,10 @@ test('User Model fill purchases', function (t) {
     }, t.error)
 })
 
-test('User Model fill purchases and actions', function (t) {
+test.only('User Model fill purchases and actions using select', function (t) {
 
 
-    User.findById(1).fill('purchases actions').then(function(user){
+    User.findById(1).select('name purchases actions').then(function(user){
         t.ok(user.name == 'Alex', 'user name is ok')
         t.ok(user.purchases && user.purchases.length > 0, 'purchases here')
         t.ok(user.actions && user.actions.length > 0, 'actions here')
