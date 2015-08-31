@@ -44,6 +44,7 @@ var addFills = function(__fills, Model, props, opts){
 
         var fill = Model.__fill[prop]
         if (!fill){
+            console.warn('mongoose-fill: fill for property', prop, 'not found')
             return
         }
 
@@ -72,11 +73,13 @@ mongoose.Query.prototype.exec = function (op, cb) {
 
     var query = this
 
-    this._fields && Object.keys(this._fields).forEach(function(f){
-        if (query._fields[f] == 1){
-            addFills(__fills, query.model, f)
-        }
-    })
+    if (query.model.__fill && this._fields){
+        Object.keys(this._fields).forEach(function(f){
+            if (query._fields[f] == 1 && query.model.__fill[f]){
+                addFills(__fills, query.model, f)
+            }
+        })
+    }
 
     if (!__fills.length) {
         return _exec.apply(this, arguments);
