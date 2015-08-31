@@ -72,7 +72,7 @@ mongoose.Query.prototype.exec = function (op, cb) {
 
     var query = this
 
-    Object.keys(this._fields).forEach(function(f){
+    this._fields && Object.keys(this._fields).forEach(function(f){
         if (query._fields[f] == 1){
             addFills(__fills, query.model, f)
         }

@@ -81,7 +81,7 @@ test('User Model fill purchases', function (t) {
     }, t.error)
 })
 
-test.only('User Model fill purchases and actions using select', function (t) {
+test('User Model fill purchases and actions using select', function (t) {
 
 
     User.findById(1).select('name purchases actions').then(function(user){
