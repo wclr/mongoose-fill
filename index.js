@@ -81,6 +81,15 @@ mongoose.Query.prototype.exec = function (op, cb) {
         })
     }
 
+    //TODO: add fill defaults
+    //if (query.model.__fill){
+    //    Object.keys(query.model.__fill).forEach(function(prop){
+    //        if (!__fills[prop] && query.model.__fill[prop].default){
+    //
+    //        }
+    //    })
+    //}
+
     if (!__fills.length) {
         return _exec.apply(this, arguments);
     }
@@ -92,13 +101,9 @@ mongoose.Query.prototype.exec = function (op, cb) {
         op = null;
     }
 
-
-
     if (cb) {
         promise.onResolve(cb);
     }
-
-
 
     var __query = {
         conditions: this._conditions,
@@ -123,7 +128,6 @@ mongoose.Query.prototype.exec = function (op, cb) {
 
         if (err || !docs) {
             promise.resolve(err, docs);
-            cb && cb(err, docs)
         } else {
             async.map(__fills, function(__fill, cb){
                 if (__fill.executed){
@@ -204,33 +208,17 @@ mongoose.Schema.prototype.fill = function(props, def) {
         })
     })
 
-    var defFiller = {
-        value: function(cb){
-            def.value = cb
+    var defFiller = [
+        'value', 'full',
+        'multi', 'fullMulti',
+        'query', 'debug', 'default']
+        .reduce(function(defFiller, method){
+            defFiller[method] = function(val){
+                def[method] = val
+                return defFiller
+            }
             return defFiller
-        },
-        full: function(cb){
-            def.full = cb
-            return defFiller
-        },
-        multi: function(cb){
-            def.multi = cb
-            return defFiller
-        },
-        fullMulti: function(cb){
-            def.fullMulti = cb
-            return defFiller
-        },
-        query: function(cb){
-            def.query = cb
-            return defFiller
-        },
-
-        debug: function(val){
-            def.debug = val
-            return defFiller
-        }
-    }
+        }, {})
 
     defFiller.get = defFiller.value
 

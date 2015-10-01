@@ -30,7 +30,7 @@ userSchema.fill('accounts').query(function(query, callback){
 
     var val = [['fb', 'twitter'], ['google']][this._id - 1]
     callback(null, val)
-})
+}).default([])
 
 
 userSchema.fill('actions mood', function(callback){
@@ -83,9 +83,10 @@ test('User Model fill purchases', function (t) {
 
 test('User Model fill purchases and actions using select', function (t) {
 
-
     User.findById(1).select('name purchases actions').then(function(user){
         t.ok(user.name == 'Alex', 'user name is ok')
+        //t.ok(user.accounts && user.accounts.length == 0, 'user accounts filled with default value')
+        t.ok(!user.age, 'user age not selected')
         t.ok(user.purchases && user.purchases.length > 0, 'purchases here')
         t.ok(user.actions && user.actions.length > 0, 'actions here')
         t.ok(!user.mood, 'mood is not here')
