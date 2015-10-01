@@ -22,13 +22,17 @@ var fillDoc = function(doc, __fill, cb){
 
         //args.unshift(doc)
         args.push(function(err, val){
-            if (prop){
-                doc[prop] = multipleProps ? val[prop] : val
-            } else {
-                props.forEach(function(prop){
-                    doc[prop] = val[prop]
-                })
+            // if val is not passed, just leave it
+            if (arguments.length > 1){
+                if (prop){
+                    doc[prop] = multipleProps ? val[prop] : val
+                } else {
+                    props.forEach(function(prop){
+                        doc[prop] = val[prop]
+                    })
+                }
             }
+
             cb(err, doc)
         })
         __fill.fill.value.apply(doc, args)
@@ -146,7 +150,7 @@ mongoose.Query.prototype.exec = function (op, cb) {
                                 index[doc._id.toString()] = doc
                                 return doc._id
                             }, {})
-                        args.unshift(ids)
+                        args.unshift(docs, ids)
                         // callback that fills props from result
                         //console.log('mongoose fill multi', __fill.props, ids.length)
                         args.push(function(err, results){
