@@ -147,19 +147,44 @@ mongoose.Query.prototype.exec = function (op, cb) {
 
                         var index = {},
                             ids = docs.map(function(doc){
-                                index[doc._id.toString()] = doc
-                                return doc._id
+                                var id = doc._id.toString()
+                                index[id] = doc
+                                return id
                             }, {})
                         args.unshift(docs, ids)
-                        // callback that fills props from result
-                        //console.log('mongoose fill multi', __fill.props, ids.length)
+
+                        var multipleProps = __fill.fill.props.length > 1
+
                         args.push(function(err, results){
 
-                            results && results.forEach(function(r){
-                                var doc = index[r._id.toString()]
-                                doc && __fill.props.forEach(function(prop){
-                                    doc[prop] = r[prop]
+                            // convert object map to array in right order
+                            if (results && !util.isArray(results)){
+                                results = ids.map(function(id){
+                                    return results[id]
                                 })
+                            }
+
+                            results && results.forEach(function(r, i){
+                                var doc = docs[i]
+
+                                var spreadProps = multipleProps
+
+                                // this is not the best idea, but we will allow this
+                                if (r._id && index[r._id.toString()]){
+                                    spreadProps = true
+                                    doc = index[r._id.toString()]
+                                }
+
+                                if (!doc){return}
+
+                                if (spreadProps){
+                                    __fill.props.forEach(function(prop){
+                                        doc[prop] = r[prop]
+                                    })
+                                } else {
+                                    var prop = __fill.fill.props[0]
+                                    doc[prop] = r
+                                }
                             })
                             //console.log('mongoose fill multi done', docs)
                             cb(err, docs)

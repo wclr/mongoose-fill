@@ -4,7 +4,8 @@
   "description": "Mongoose.js add-on that adds virtual (temporary) async fileds API",
   "main": "index.js",
   "scripts": {
-    "test": "node test.js"
+    "test": "node test.js",
+    "test-dev": "node-dev test.js"
   },
   "repository": {
     "type": "git",

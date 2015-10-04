@@ -1,9 +1,7 @@
 var test = require('tape');
-
 var mongoose = require('./index')
 
 mongoose.connect('mongodb://localhost/mongoose_fill_test')
-
 
 var userSchema = new mongoose.Schema({
     _id: 'number',
@@ -19,14 +17,20 @@ userSchema.set('toObject', {
     virtuals: true
 })
 
+var surnames = ['Galt', 'Dow']
+
 userSchema.fill('surname', function(callback){
-    var val = ['Galt', 'Dow'][this._id - 1]
+    var val = surnames[this._id - 1]
     callback(null, val)
+}).multi(function(users, ids, callback){
+    callback(null, ids.map(function(id){
+        return surnames[id - 1]
+    }))
 })
 
 userSchema.fill('accounts').query(function(query, callback){
 
-    console.log('accounts fill query', query)
+    //console.log('accounts fill query', query)
 
     var val = [['fb', 'twitter'], ['google']][this._id - 1]
     callback(null, val)
@@ -46,7 +50,7 @@ userSchema.fill('purchases', function(callback){
 
 mongoose.model('User', userSchema)
 
-
+// TODO: for ref schema tests
 var purchaseSchema = new mongoose.Schema({
     amount: 'string'
 })
@@ -123,18 +127,16 @@ test('User instance fill mood and actions and surname', function (t) {
     }, t.error)
 })
 
-test.skip('User model fill query accounts', function (t) {
-
+test('User model fill query accounts & surnames (multi)', function (t) {
 
     User
         .find({name: {$exists: true}})
         .sort('accounts')
         .limit(5)
-        .fill('accounts').then(function(users){
-
-            t.ok(users.length > 2, 'user count ok')
-            //t.ok(user.actions && user.actions.length > 0, 'user actions here')
-            //t.ok(user.surname == 'Galt', 'surname is here')
+        .fill('accounts surname').then(function(users){
+            t.ok(users.length == 2, 'user count ok')
+            t.is(users[0].surname, surnames[users[0].id - 1], 'user1 surname ok ok')
+            t.is(users[1].surname, surnames[users[1].id - 1], 'user2 surname ok ok')
             t.end()
 
     }, t.error)
