@@ -149,7 +149,7 @@ mongoose.Query.prototype.exec = function (op, cb) {
                             ids = docs.map(function(doc){
                                 var id = doc._id.toString()
                                 index[id] = doc
-                                return id
+                                return doc._id
                             }, {})
                         args.unshift(docs, ids)
 

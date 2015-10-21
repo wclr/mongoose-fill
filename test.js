@@ -23,14 +23,19 @@ userSchema.fill('surname', function(callback){
     var val = surnames[this._id - 1]
     callback(null, val)
 }).multi(function(users, ids, callback){
-    callback(null, ids.map(function(id){
-        return surnames[id - 1]
-    }))
+
+    //var result = ids.map(function(id){
+    //    return surnames[id - 1]
+    //})
+
+    var result = ids.map(function(id){
+        return {_id: id, surname: surnames[id - 1]}
+    })
+
+    callback(null, result)
 })
 
 userSchema.fill('accounts').query(function(query, callback){
-
-    //console.log('accounts fill query', query)
 
     var val = [['fb', 'twitter'], ['google']][this._id - 1]
     callback(null, val)
@@ -57,13 +62,7 @@ var purchaseSchema = new mongoose.Schema({
 
 var User = mongoose.model('User', userSchema)
 
-test('remove users', function (t) {
-    t.plan(1)
-    User.remove({}, t.error)
-});
-
-test('create users', function (t) {
-
+test('setup', function (t) {
     t.plan(1)
 
     var usersData = [
@@ -71,11 +70,14 @@ test('create users', function (t) {
         {_id: 2, name: 'Jane', age: 12}
     ]
 
-    User.create(usersData, t.error)
+    User.remove({}, function(){
+        User.create(usersData, t.error)
+    })
+
 });
 
 
-test('User Model fill purchases', function (t) {
+test('fill one property: purchases', function (t) {
     t.plan(3)
 
     User.findById(1).fill('purchases').then(function(user){
@@ -85,7 +87,7 @@ test('User Model fill purchases', function (t) {
     }, t.error)
 })
 
-test('User Model fill purchases and actions using select', function (t) {
+test('fill multiple properties with select: purchases, actions', function (t) {
 
     User.findById(1).select('name purchases actions').then(function(user){
         t.ok(user.name == 'Alex', 'user name is ok')
@@ -99,7 +101,7 @@ test('User Model fill purchases and actions using select', function (t) {
 })
 
 
-test('User instance fill only mood', function (t) {
+test('fill on instance only one (exclusive) prop: mood', function (t) {
     t.plan(2)
 
     User.findById(1).then(function(user){
@@ -113,7 +115,7 @@ test('User instance fill only mood', function (t) {
     }, t.error)
 })
 
-test('User instance fill mood and actions and surname', function (t) {
+test('fill on instance: mood, actions, surname', function (t) {
 
 
     User.findById(1).then(function(user){
@@ -127,17 +129,32 @@ test('User instance fill mood and actions and surname', function (t) {
     }, t.error)
 })
 
-test('User model fill query accounts & surnames (multi)', function (t) {
+test('fill property using multi: surnames', function (t) {
 
     User
         .find({name: {$exists: true}})
-        .sort('accounts')
+        //.sort('accounts')
         .limit(5)
         .fill('accounts surname').then(function(users){
             t.ok(users.length == 2, 'user count ok')
             t.is(users[0].surname, surnames[users[0].id - 1], 'user1 surname ok ok')
             t.is(users[1].surname, surnames[users[1].id - 1], 'user2 surname ok ok')
             t.end()
+
+    }, t.error)
+})
+
+test('fill property using multi: surnames', function (t) {
+
+    User
+        .find({name: {$exists: true}})
+        //.sort('accounts')
+        .limit(5)
+        .fill('accounts surname').then(function(users){
+        t.ok(users.length == 2, 'user count ok')
+        t.is(users[0].surname, surnames[users[0].id - 1], 'user1 surname ok ok')
+        t.is(users[1].surname, surnames[users[1].id - 1], 'user2 surname ok ok')
+        t.end()
 
     }, t.error)
 })
