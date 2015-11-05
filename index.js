@@ -303,22 +303,14 @@ mongoose.Query.prototype.fill = function() {
     return this
 };
 
-//mongoose.Model.prototype.fill = function(props, opts, cb) {
 mongoose.Model.prototype.fill = function() {
 
     var doc = this;
     var Model = this.constructor;
 
-    //if (typeof opts === 'function') {
-    //    cb = opts;
-    //    opts = undefined;
-    //}
-
     var args = Array.prototype.slice.call(arguments);
     var props = args.shift()
-    if (typeof args[args.length - 1] == 'function'){
-        var cb = args.pop()
-    }
+    var cb = typeof args[args.length - 1] == 'function' && args.pop()
     var opts = args
 
     var __fills = []
@@ -328,13 +320,13 @@ mongoose.Model.prototype.fill = function() {
     async.map(__fills, function(__fill, cb){
         fillDoc(doc, __fill, cb)
     }, function(err){
-        cb(err, doc)
+        cb && cb(err, doc)
     })
 
     return this
 };
 
-//prop, opts, cb
+
 mongoose.Model.prototype.filled = function(){
 
     var args = Array.prototype.slice.call(arguments);
@@ -346,10 +338,6 @@ mongoose.Model.prototype.filled = function(){
     }
 
     this.fill.apply(this, args)
-
-    //this.fill(prop, opts, function(err, doc){
-    //    cb(err, doc[prop])
-    //})
 }
 
 module.exports = mongoose
