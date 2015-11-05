@@ -42,12 +42,14 @@ userSchema.fill('accounts').query(function(query, callback){
 }).default([])
 
 
-userSchema.fill('actions mood', function(callback){
+userSchema.fill('actions mood', function(upperCase, prefix, callback){
+    //console.log('actions mood', arg1, arg2, callback)
+    var mood = prefix + 'good'
     callback(null, {
         actions: ['eat', 'pray', 'kill'],
-        mood: 'good'
+        mood: (upperCase ? mood.toUpperCase() : mood)
     })
-})
+}).options(false , 'super')
 
 userSchema.fill('purchases', function(callback){
     callback(null, [{amount: 5}, {amount: 10}])
@@ -101,13 +103,13 @@ test('fill multiple properties with select: purchases, actions', function (t) {
 })
 
 
-test('fill on instance only one (exclusive) prop: mood', function (t) {
+test('fill on instance only one (exclusive) "mood" prop with lacking options', function (t) {
     t.plan(2)
 
     User.findById(1).then(function(user){
 
-        user.fill('mood', function(){
-            t.ok(user.mood == 'good', 'user mood here')
+        user.fill('mood', true, function(){
+            t.is(user.mood, 'SUPERGOOD', 'user mood here')
             t.ok(!user.actions, 'user actions not here')
             //t.ok(user.actions && user.actions.length > 0, 'user actions here')
         })
@@ -117,11 +119,10 @@ test('fill on instance only one (exclusive) prop: mood', function (t) {
 
 test('fill on instance: mood, actions, surname', function (t) {
 
-
     User.findById(1).then(function(user){
 
         user.fill('mood actions surname', function(){
-            t.ok(user.mood == 'good', 'user mood here')
+            t.is(user.mood, 'supergood', 'user mood here')
             t.ok(user.actions && user.actions.length > 0, 'user actions here')
             t.ok(user.surname == 'Galt', 'surname is here')
             t.end()
@@ -157,4 +158,8 @@ test('fill property using multi: surnames', function (t) {
         t.end()
 
     }, t.error)
+})
+
+test('the end', function (t) {
+    t.end()
 })

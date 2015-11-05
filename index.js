@@ -2,13 +2,33 @@ var mongoose = require('mongoose');
 var async = require('async')
 var util = require('util')
 
+var getArgsWithOptions = function(__fill){
+    var args = [],
+        options = __fill.fill.options
+
+    var opts = __fill.opts && __fill.opts.length
+        ? __fill.opts
+        : options
+
+    if (opts && opts.length){
+
+        // add lacking or remove excessive options
+        if (options ){
+            var diff = opts.length - options.length
+            if (diff < 0){
+                opts = opts.concat(options.slice(diff))
+            } else if (diff > 0){
+                opts = opts.slice(0, diff)
+            }
+        }
+        args.push.apply(args, opts)
+    }
+    return args
+}
+
 var fillDoc = function(doc, __fill, cb){
 
-    var args = []
-
-    if (__fill.opts !== undefined){
-        args.push(__fill.opts)
-    }
+    var args = getArgsWithOptions(__fill)
 
     if (__fill.fill.fill){
         args.unshift(doc)
@@ -23,7 +43,7 @@ var fillDoc = function(doc, __fill, cb){
         //args.unshift(doc)
         args.push(function(err, val){
             // if val is not passed, just leave it
-            if (arguments.length > 1){
+            if (arguments.length > 1 && val !== doc){
                 if (prop){
                     doc[prop] = multipleProps ? val[prop] : val
                 } else {
@@ -139,10 +159,8 @@ mongoose.Query.prototype.exec = function (op, cb) {
                 }
                 // TODO: make this also if there is only multi methods when one doc
                 if (util.isArray(docs)){
-                    var args = []
-                    if (__fill.opts !== undefined){
-                        args.unshift(__fill.opts)
-                    }
+                    var args = getArgsWithOptions(__fill)
+
                     if (__fill.fill.multi){
 
                         var index = {},
@@ -157,38 +175,41 @@ mongoose.Query.prototype.exec = function (op, cb) {
 
                         args.push(function(err, results){
 
-                            // convert object map to array in right order
-                            if (results && !util.isArray(results)){
-                                results = ids.map(function(id){
-                                    return results[id]
+                            if (results && results !== docs){
+
+                                // convert object map to array in right order
+                                if (!util.isArray(results)){
+                                    results = ids.map(function(id){
+                                        return results[id]
+                                    })
+                                }
+
+                                results.forEach(function(r, i){
+                                    if (!r){
+                                        return
+                                    }
+                                    var doc = docs[i]
+
+                                    var spreadProps = multipleProps
+
+                                    // this is not the best idea, but we will allow this
+                                    if (r._id && index[r._id.toString()]){
+                                        spreadProps = true
+                                        doc = index[r._id.toString()]
+                                    }
+
+                                    if (!doc){return}
+
+                                    if (spreadProps){
+                                        __fill.props.forEach(function(prop){
+                                            doc[prop] = r[prop]
+                                        })
+                                    } else {
+                                        var prop = __fill.fill.props[0]
+                                        doc[prop] = r
+                                    }
                                 })
                             }
-
-                            results && results.forEach(function(r, i){
-                                if (!r){
-                                    return
-                                }
-                                var doc = docs[i]
-
-                                var spreadProps = multipleProps
-
-                                // this is not the best idea, but we will allow this
-                                if (r._id && index[r._id.toString()]){
-                                    spreadProps = true
-                                    doc = index[r._id.toString()]
-                                }
-
-                                if (!doc){return}
-
-                                if (spreadProps){
-                                    __fill.props.forEach(function(prop){
-                                        doc[prop] = r[prop]
-                                    })
-                                } else {
-                                    var prop = __fill.fill.props[0]
-                                    doc[prop] = r
-                                }
-                            })
                             //console.log('mongoose fill multi done', docs)
                             cb(err, docs)
                         })
@@ -243,12 +264,20 @@ mongoose.Schema.prototype.fill = function(props, def) {
     var defFiller = [
         'value', 'full',
         'multi', 'fullMulti',
-        'query', 'debug', 'default']
+        'query', 'debug', 'default', 'options']
         .reduce(function(defFiller, method){
-            defFiller[method] = function(val){
-                def[method] = val
-                return defFiller
+            if (method == 'options'){
+                defFiller[method] = function(){
+                    def[method] = Array.prototype.slice.call(arguments);
+                    return defFiller
+                }
+            } else {
+                defFiller[method] = function(val){
+                    def[method] = val
+                    return defFiller
+                }
             }
+
             return defFiller
         }, {})
 
@@ -258,10 +287,15 @@ mongoose.Schema.prototype.fill = function(props, def) {
 }
 
 
-mongoose.Query.prototype.fill = function(props, opts) {
+mongoose.Query.prototype.fill = function() {
 
     var query = this;
     var Model = this.model;
+
+    var args = Array.prototype.slice.call(arguments);
+    var props = args.shift()
+    var opts = args
+
     query.__fills = query.__fills || []
 
     addFills(query.__fills, Model, props, opts)
@@ -269,15 +303,23 @@ mongoose.Query.prototype.fill = function(props, opts) {
     return this
 };
 
-mongoose.Model.prototype.fill = function(props, opts, cb) {
+//mongoose.Model.prototype.fill = function(props, opts, cb) {
+mongoose.Model.prototype.fill = function() {
 
     var doc = this;
     var Model = this.constructor;
 
-    if (typeof opts === 'function') {
-        cb = opts;
-        opts = undefined;
+    //if (typeof opts === 'function') {
+    //    cb = opts;
+    //    opts = undefined;
+    //}
+
+    var args = Array.prototype.slice.call(arguments);
+    var props = args.shift()
+    if (typeof args[args.length - 1] == 'function'){
+        var cb = args.pop()
     }
+    var opts = args
 
     var __fills = []
 
@@ -292,15 +334,22 @@ mongoose.Model.prototype.fill = function(props, opts, cb) {
     return this
 };
 
-mongoose.Model.prototype.filled = function(prop, opts, cb){
-    if (typeof opts === 'function') {
-        cb = opts;
-        opts = undefined;
+//prop, opts, cb
+mongoose.Model.prototype.filled = function(){
+
+    var args = Array.prototype.slice.call(arguments);
+    var cb = args[args.length - 1]
+    if (typeof cb == 'function'){
+        args[args.length - 1] = function(err, doc){
+            cb(err, doc[prop])
+        }
     }
 
-    this.fill(prop, opts, function(err, doc){
-        cb(err, doc[prop])
-    })
+    this.fill.apply(this, args)
+
+    //this.fill(prop, opts, function(err, doc){
+    //    cb(err, doc[prop])
+    //})
 }
 
 module.exports = mongoose
