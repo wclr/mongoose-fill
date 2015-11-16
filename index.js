@@ -157,6 +157,13 @@ mongoose.Query.prototype.exec = function (op, cb) {
                 if (__fill.executed){
 
                 }
+                var useMultiWithSingle = !util.isArray(docs) && !__fill.fill.value && __fill.fill.multi
+
+                if (useMultiWithSingle){
+                    docs = [docs]
+                }
+
+
                 // TODO: make this also if there is only multi methods when one doc
                 if (util.isArray(docs)){
                     var args = getArgsWithOptions(__fill)
@@ -211,13 +218,15 @@ mongoose.Query.prototype.exec = function (op, cb) {
                                 })
                             }
                             //console.log('mongoose fill multi done', docs)
-                            cb(err, docs)
+                            if (useMultiWithSingle){
+                                cb(err, docs[0])
+                            } else {
+                                cb(err, docs)
+                            }
                         })
 
                         __fill.fill.multi.apply(__fill.fill, args)
-                        // TODO: add `full and fullMulti` API
-                    } else if (__fill.fill.fullMulti){
-                        __fill.fill.fullMulti(args)
+
                     } else {
                         async.map(docs, function(doc, cb){
                             fillDoc(doc, __fill, cb)
