@@ -12,12 +12,12 @@ var mongoose = require('mongoose-fill')
  ...
 
 myParentSchema.fill('children', function(callback){
-this.db.model('Child')
-    .find({parent: this.id})
-    .select('name age')
-    .order('-age')
-    .exec(callback)
-})
+    this.db.model('Child')
+        .find({parent: this.id})
+        .select('name age')
+        .order('-age')
+        .exec(callback)
+    })
 ...
 Parent.findById(1).fill('children').exec().then(function(parent){
     //parent.children <- will be array of children with fields name and age ordered by age
@@ -29,22 +29,21 @@ filling property using single query for multiple objects
 ```javascript
 
 myParentSchema.fill('childrenCount').value(function(callback){
-// `this` is found instance
-this.db.model('Child')
-    .count({parent: this.id})
-    .exec(callback)
-// multi is used for queries with multiple fields
-}).multi(function(docs, ids, callback){
-// `this` is just object 
-// query childrenCount for all found parents with single db query
-this.db.model('Child')
-    .aggregate([{
-        $group: {
-            _id: '$parent',
-            childrenCount: {$sum: 1}
-        }},
-        {$match: {'_id': {$in: ids}}}
-    ], callback)
+    // `this` is current (found) instance
+    this.db.model('Child')
+        .count({parent: this.id})
+        .exec(callback)
+    // multi is used for queries with multiple fields
+    }).multi(function(docs, ids, callback){     
+    // query childrenCount for all found parents with single db query
+    this.db.model('Child')
+        .aggregate([{
+            $group: {
+                _id: '$parent',
+                childrenCount: {$sum: 1}
+            }},
+            {$match: {'_id': {$in: ids}}}
+        ], callback)
 })
 ...
 
@@ -57,12 +56,12 @@ using fill options with default values
 
 ```javascript
 myParentSchema.fill('children', select, order, function(callback){
-this.db.model('Child')
-    .find({parent: this.id})
-    .select(select)
-    .order(order)
-    .exec(callback)
-}).options('', '-age')
+    this.db.model('Child')
+        .find({parent: this.id})
+        .select(select)
+        .order(order)
+        .exec(callback)
+    }).options('', '-age')
 ...
 
 // fill children with only `name age` properties ordered by `age`
