@@ -271,8 +271,7 @@ mongoose.Schema.prototype.fill = function(props, def) {
     })
 
     var defFiller = [
-        'value', 'full',
-        'multi', 'fullMulti',
+        'value', 'multi',
         'query', 'debug', 'default', 'options']
         .reduce(function(defFiller, method){
             if (method == 'options'){

@@ -7,6 +7,12 @@
     "test": "node test.js",
     "test-dev": "node-dev test.js"
   },
+  "files": [
+    "README.md",
+    "index.js",
+    "test.js",
+    "package.json"
+  ],
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/whitecolor/mongoose-fill.git"
