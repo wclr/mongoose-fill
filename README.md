@@ -2,6 +2,13 @@
 
 mongoose-fill is [mongoose.js](http://mongoosejs.com/) add-on that adds simple api for virtual async fields.
 
+## why?
+
+This just gives you a simple and easy to use API for: 
+
+- implementing db joins without keeping refs to related objects (with refs  you can use `populate`)
+- joining mongoose object with any kind of data (with any async service - other db or web service)
+
 ## api use cases - learn by example
 
 basic use case fills single filed
@@ -17,7 +24,7 @@ myParentSchema.fill('children', function(callback){
         .select('name age')
         .order('-age')
         .exec(callback)
-    })
+})
 ...
 Parent.findById(1).fill('children').exec().then(function(parent){
     //parent.children <- will be array of children with fields name and age ordered by age
@@ -47,6 +54,7 @@ myParentSchema.fill('childrenCount').value(function(callback){
 })
 ...
 
+// you can place property name that should be filled in `select` option
 Parent.find({}).select('name childrenCount').exec().then(function(parents){
     //parent.childrenCount <- will contain count of children
 })
@@ -55,18 +63,18 @@ Parent.find({}).select('name childrenCount').exec().then(function(parents){
 using fill options with default values
 
 ```javascript
-myParentSchema.fill('children', select, order, function(callback){
+myParentSchema.fill('children', function(select, order, callback){
     this.db.model('Child')
         .find({parent: this.id})
         .select(select)
         .order(order)
         .exec(callback)
-    }).options('', '-age')
+}).options('', '-age')
 ...
 
 // fill children with only `name age` properties ordered by `age`
 Parent.findById(1).fill('children', 'name age', 'age').exec().then(function(parent){
-//parent.children <- will be array of children with fields name and age ordered by age
+    //parent.children <- will be array of children with fields name and age ordered by age
 })
 ```
 
@@ -77,7 +85,7 @@ Also check the code of test for more use cases
 - adds fill method to mongoose schema object 
 - adds `fill` and `filled` prototype methods to mongoose model 
 - patches mongoose query exec method extending query api with `fill` method
-- virtual props are implemented by using `__propName` virtual getter (check the code)   
+- implemented using mongoose virtual setters/getters (actual value is stored in `__propName` property)   
 
 
 ### Version
