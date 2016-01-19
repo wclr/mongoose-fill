@@ -135,106 +135,135 @@ mongoose.Query.prototype.exec = function (op, cb) {
     options: this.options
   }
 
-  __fills.forEach(function(__fill){
+  //__fills.forEach(function(__fill){
+  //
+  //  if (__fill.fill.query){
+  //    var result = __fill.fill.query.apply(query, [__query, function(){
+  //
+  //    }])
+  //    if (result !== undefined){
+  //      __fill.executed = true
+  //    }
+  //  }
+  //})
 
-    if (__fill.fill.query){
-      var result = __fill.fill.query.apply(query, [__query, function(){
-
-      }])
-      if (result !== undefined){
-        __fill.executed = true
-      }
-    }
-  })
+  __fillsSequence = this.__fillsSequence
 
   _exec.call(this, op, function (err, docs) {
-    //var resolve = promise.resolve.bind(promise);
 
     if (err || !docs) {
       promise.resolve(err, docs);
     } else {
-      async.map(__fills, function(__fill, cb){
-        if (__fill.executed){
 
-        }
-        var useMultiWithSingle = !util.isArray(docs) && !__fill.fill.value && __fill.fill.multi
+      async.mapSeries(__fillsSequence, function(__fills, cb){
 
-        if (useMultiWithSingle){
-          docs = [docs]
-        }
+        async.map(__fills, function(__fill, cb){
+          //if (__fill.executed){
+          //
+          //}
+          var useMultiWithSingle = !util.isArray(docs) && !__fill.fill.value && __fill.fill.multi
 
+          if (useMultiWithSingle){
+            docs = [docs]
+          }
 
-        // TODO: make this also if there is only multi methods when one doc
-        if (util.isArray(docs)){
-          var args = getArgsWithOptions(__fill)
+          // TODO: make this also if there is only multi methods when one doc
+          if (util.isArray(docs)){
+            var args = getArgsWithOptions(__fill)
 
-          if (__fill.fill.multi && !__fill.fillEach){
+            if (__fill.fill.multi && !__fill.fillEach){
 
-            var index = {},
-              ids = docs.map(function(doc){
-                var id = doc._id.toString()
-                index[id] = doc
-                return doc._id
-              }, {})
-            args.unshift(docs, ids)
+              var index = {},
+                ids = docs.map(function(doc){
+                  var id = doc._id.toString()
+                  index[id] = doc
+                  return doc._id
+                }, {})
+              args.unshift(docs, ids)
 
-            var multipleProps = __fill.fill.props.length > 1
+              var multipleProps = __fill.fill.props.length > 1
 
-            args.push(function(err, results){
+              // set default values
+              if (__fill.fill.default){
 
-              if (results && results !== docs){
-
-                // convert object map to array in right order
-                if (!util.isArray(results)){
-                  results = ids.map(function(id){
-                    return results[id]
-                  })
-                }
-
-                results.forEach(function(r, i){
-                  if (!r){
-                    return
-                  }
-                  var doc = docs[i]
-
-                  var spreadProps = multipleProps
-
-                  // this is not the best idea, but we will allow this
-                  if (r._id && index[r._id.toString()]){
-                    spreadProps = true
-                    doc = index[r._id.toString()]
-                  }
-
-                  if (!doc){return}
-
-                  if (spreadProps){
-                    __fill.props.forEach(function(prop){
-                      doc[prop] = r[prop]
+                __fill.fill.props.forEach(function(prop, i){
+                  var defaultPropValue =
+                    multipleProps && Array.isArray(__fill.fill.default)
+                      ? __fill.fill.default[i]
+                      : __fill.fill.default
+                    docs.forEach(function(doc){
+                      //  ensure unique values of passed objects/arrays
+                      if (typeof defaultPropValue == 'object'){
+                        doc[prop] = Object.assign(
+                          Array.isArray(defaultPropValue) ? [] : {}
+                          , defaultPropValue)
+                      } else if (typeof defaultPropValue == 'function'){
+                        doc[prop] = defaultPropValue()
+                      } else {
+                        doc[prop] = defaultPropValue
+                      }
                     })
-                  } else {
-                    var prop = __fill.fill.props[0]
-                    doc[prop] = r
-                  }
                 })
               }
-              //console.log('mongoose fill multi done', docs)
-              if (useMultiWithSingle){
-                cb(err, docs[0])
-              } else {
-                cb(err, docs)
-              }
-            })
 
-            __fill.fill.multi.apply(__fill.fill, args)
+              args.push(function(err, results){
 
+                if (results && results !== docs){
+
+                  // convert object map to array in right order
+                  if (!util.isArray(results)){
+                    results = ids.map(function(id){
+                      return results[id]
+                    })
+                  }
+
+                  results.forEach(function(r, i){
+                    if (!r){
+                      return
+                    }
+                    var doc = docs[i]
+
+                    var spreadProps = multipleProps
+
+                    // this is not the best idea, but we will allow this
+                    if (r._id && index[r._id.toString()]){
+                      spreadProps = true
+                      doc = index[r._id.toString()]
+                    }
+
+                    if (!doc){return}
+
+                    if (spreadProps){
+                      __fill.props.forEach(function(prop){
+                        doc[prop] = r[prop]
+                      })
+                    } else {
+                      var prop = __fill.fill.props[0]
+                      doc[prop] = r
+                    }
+                  })
+                }
+                //console.log('mongoose fill multi done', docs)
+                if (useMultiWithSingle){
+                  cb(err, docs[0])
+                } else {
+                  cb(err, docs)
+                }
+              })
+
+              __fill.fill.multi.apply(__fill.fill, args)
+
+            } else {
+              async.map(docs, function(doc, cb){
+                fillDoc(doc, __fill, cb)
+              }, cb)
+            }
           } else {
-            async.map(docs, function(doc, cb){
-              fillDoc(doc, __fill, cb)
-            }, cb)
+            fillDoc(docs, __fill, cb)
           }
-        } else {
-          fillDoc(docs, __fill, cb)
-        }
+        }, function(err){
+          cb(err)
+        })
       }, function(err){
         promise.resolve(err, docs);
       })
@@ -247,6 +276,11 @@ mongoose.Query.prototype.exec = function (op, cb) {
 mongoose.Schema.prototype.fill = function(props, def) {
 
   this.statics.__fill = this.statics.__fill || {}
+
+  // return
+  if (this.statics.__fill[props]){
+    return this.statics.__fill[props]
+  }
 
   def = def || {}
 
@@ -304,9 +338,15 @@ mongoose.Query.prototype.fill = function() {
   var props = args.shift()
   var opts = args
 
-  query.__fills = query.__fills || []
+  query.__fillsSequence = query.__fillsSequence || []
 
+  query.__fills = query.__fills || []
   addFills(query.__fills, Model, props, opts)
+
+  var __fills = []
+  addFills(__fills, Model, props, opts)
+
+  query.__fillsSequence.push(__fills)
 
   return this
 }
