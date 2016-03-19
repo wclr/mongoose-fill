@@ -1,3 +1,5 @@
+'use strict'
+
 var mongoose = require('mongoose');
 var async = require('async')
 var util = require('util')
@@ -13,7 +15,7 @@ var getArgsWithOptions = function(__fill){
   if (opts && opts.length){
 
     // add lacking or remove excessive options
-    if (options ){
+    if (options){
       var diff = opts.length - options.length
       if (diff < 0){
         opts = opts.concat(options.slice(diff))
@@ -62,14 +64,55 @@ var fillDoc = function(doc, __fill, cb){
 }
 
 var addFills = function(__fills, Model, props, opts){
-
   var added = false
-  props.split(' ').forEach(function(prop){
-
+  props = (typeof props == 'string') ? props.split(' ') : props
+  props.forEach((prop) => {
+    prop = prop.trim()
     var fill = Model.__fill[prop]
     if (!fill){
-      console.warn('mongoose-fill: fill for property', prop, 'not found')
-      return
+      var propSplit = prop.split('.').filter(_ => _)
+      if (propSplit.length > 1){
+        // filter if already added
+        if (__fills.filter(__fill => __fill.fill.prop == prop).length > 0){
+          return
+        }
+        propSplit.slice(0, propSplit.length -1)
+          .forEach((prop, i) => {
+            addFills(
+              __fills,
+              Model,
+              [propSplit.slice(0, i + 1).join('.')]
+            )
+          })
+        var fieldProp = propSplit.shift()
+        fill = {
+          prop: prop,
+          fill: function ()  {
+            var opts = Array.prototype.slice.call(arguments);
+            var doc = opts.shift()
+            var callback = opts.pop()
+            if (doc[fieldProp]){
+              var docs = doc[fieldProp]
+              if (!Array.isArray(docs)){
+                docs = [docs]
+              }
+              async.map(docs, (doc, cb) => {
+                var args = [propSplit.join('.')]
+                  .concat(opts || []).concat([cb])
+                doc && typeof doc.fill === 'function'
+                  ? doc.fill.apply(doc, args)
+                  : cb()
+              }, (err) => {
+                callback(err, doc)
+              })
+            } else {
+              callback(null, doc)
+            }
+          }
+        }
+      } else {
+        throw new Error('fill for property "' + prop + '" not found')
+      }
     }
 
     added = true
@@ -94,7 +137,7 @@ var _exec = mongoose.Query.prototype.exec
 mongoose.Query.prototype.exec = function (op, cb) {
   var __fills = this.__fills || [];
   //console.log('query exec', this.options, 'this._conditions', this._conditions, this._fields)
-
+  var __fillsSequence = this.__fillsSequence || []
   var query = this
 
   if (query.model.__fill && this._fields){
@@ -103,18 +146,10 @@ mongoose.Query.prototype.exec = function (op, cb) {
         addFills(__fills, query.model, f)
       }
     })
+    __fillsSequence.unshift(__fills)
   }
 
-  //TODO: add fill defaults
-  //if (query.model.__fill){
-  //    Object.keys(query.model.__fill).forEach(function(prop){
-  //        if (!__fills[prop] && query.model.__fill[prop].default){
-  //
-  //        }
-  //    })
-  //}
-
-  if (!__fills.length) {
+  if (!__fillsSequence.length) {
     return _exec.apply(this, arguments);
   }
 
@@ -128,27 +163,7 @@ mongoose.Query.prototype.exec = function (op, cb) {
   if (cb) {
     promise.onResolve(cb);
   }
-
-  var __query = {
-    conditions: this._conditions,
-    fields: this._fields,
-    options: this.options
-  }
-
-  //__fills.forEach(function(__fill){
-  //
-  //  if (__fill.fill.query){
-  //    var result = __fill.fill.query.apply(query, [__query, function(){
-  //
-  //    }])
-  //    if (result !== undefined){
-  //      __fill.executed = true
-  //    }
-  //  }
-  //})
-
-  __fillsSequence = this.__fillsSequence
-
+  
   _exec.call(this, op, function (err, docs) {
 
     if (err || !docs) {
@@ -158,9 +173,6 @@ mongoose.Query.prototype.exec = function (op, cb) {
       async.mapSeries(__fillsSequence, function(__fills, cb){
 
         async.map(__fills, function(__fill, cb){
-          //if (__fill.executed){
-          //
-          //}
           var useMultiWithSingle = !util.isArray(docs) && !__fill.fill.value && __fill.fill.multi
 
           if (useMultiWithSingle){
@@ -376,7 +388,6 @@ mongoose.Model.prototype.fill = function() {
   var opts = args
 
   var __fills = []
-
   addFills(__fills, Model, props, opts)
 
   async.map(__fills, function(__fill, cb){

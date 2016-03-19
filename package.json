@@ -1,11 +1,11 @@
 {
   "name": "mongoose-fill",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Mongoose.js add-on that adds virtual (temporary) async fileds API",
   "main": "index.js",
   "scripts": {
     "test": "node test.js",
-    "test-dev": "node-dev test.js"
+    "test-dev": "node-dev --respawn test.js"
   },
   "files": [
     "README.md",
