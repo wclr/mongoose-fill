@@ -63,27 +63,45 @@ var fillDoc = function(doc, __fill, cb){
   }
 }
 
-var addFills = function(__fills, Model, props, opts){
-  var added = false
+var checkAlreadyHasFill = function(__fillsSequence, fill){
+  return __fillsSequence.reduce((has, __fills) =>
+    has || __fills
+      .filter(__fill => __fill.fill === fill)[0]
+    , false)
+}
+
+var checkAlreadyHasFillProp = function(__fillsSequence, prop){
+  return __fillsSequence.reduce((has, __fills) =>
+    has || __fills
+      .filter(__fill => __fill.fill.prop === prop).length > 0
+  , false)
+}
+
+var addFills = function(__fillsSequence, Model, props, opts, unshift) {
+  let __fills = []
   props = (typeof props == 'string') ? props.split(' ') : props
   props.forEach((prop) => {
     prop = prop.trim()
     var fill = Model.__fill[prop]
-    if (!fill){
+    if (fill){
+      var __fill = checkAlreadyHasFill(__fillsSequence, fill)
+      if (__fill){
+        if (__fill.props.indexOf(prop) < 0){
+          __fill.props.push(prop)
+        }
+      } else {
+        __fills.push({fill: fill, opts: opts, props: [prop]})
+      }
+    } else {
       var propSplit = prop.split('.').filter(_ => _)
       if (propSplit.length > 1){
-        // filter if already added
-        if (__fills.filter(__fill => __fill.fill.prop == prop).length > 0){
+        if (checkAlreadyHasFillProp(__fillsSequence, prop)){
           return
         }
-        propSplit.slice(0, propSplit.length -1)
-          .forEach((prop, i) => {
-            addFills(
-              __fills,
-              Model,
-              [propSplit.slice(0, i + 1).join('.')]
-            )
-          })
+        addFills(
+          __fillsSequence, Model,
+          [propSplit.slice(0, -1).join('.')]
+        )
         var fieldProp = propSplit.shift()
         fill = {
           prop: prop,
@@ -110,49 +128,38 @@ var addFills = function(__fills, Model, props, opts){
             }
           }
         }
+        __fills.push({fill: fill, opts: opts, props: [prop]})
       } else {
         throw new Error('fill for property "' + prop + '" not found')
       }
     }
-
-    added = true
     fill.db = Model.db
-    if (fill){
-      // check if fill already added
-      var __fill = __fills.filter(function(__f){return __f.fill == fill})[0]
-      if (__fill){
-        if (__fill.props.indexOf(prop) < 0){
-          __fill.props.push(prop)
-        }
-      } else {
-        __fills.push({fill: fill, opts: opts, props: [prop]})
-      }
-    }
+
   })
-  return added
+  if (__fills.length){
+    unshift
+      ? __fillsSequence.unshift(__fills)
+      : __fillsSequence.push(__fills)
+  }
 }
 
 var _exec = mongoose.Query.prototype.exec
 
 mongoose.Query.prototype.exec = function (op, cb) {
-  var __fills = this.__fills || [];
-  //console.log('query exec', this.options, 'this._conditions', this._conditions, this._fields)
   var __fillsSequence = this.__fillsSequence || []
   var query = this
 
   if (query.model.__fill && this._fields){
     Object.keys(this._fields).forEach(function(f){
       if (query._fields[f] == 1 && query.model.__fill[f]){
-        addFills(__fills, query.model, f)
+        addFills(__fillsSequence, query.model, f, true)
       }
     })
-    __fillsSequence.unshift(__fills)
   }
 
   if (!__fillsSequence.length) {
     return _exec.apply(this, arguments);
   }
-
   var promise = new mongoose.Promise();
 
   if (typeof op === 'function') {
@@ -342,7 +349,6 @@ mongoose.Schema.prototype.fill = function(props, def) {
 
 
 mongoose.Query.prototype.fill = function() {
-
   var query = this;
   var Model = this.model;
 
@@ -351,15 +357,8 @@ mongoose.Query.prototype.fill = function() {
   var opts = args
 
   query.__fillsSequence = query.__fillsSequence || []
-
   query.__fills = query.__fills || []
-  addFills(query.__fills, Model, props, opts)
-
-  var __fills = []
-  addFills(__fills, Model, props, opts)
-
-  query.__fillsSequence.push(__fills)
-
+  addFills(query.__fillsSequence, Model, props, opts)
   return this
 }
 
@@ -387,12 +386,14 @@ mongoose.Model.prototype.fill = function() {
   var cb = typeof args[args.length - 1] == 'function' && args.pop()
   var opts = args
 
-  var __fills = []
-  addFills(__fills, Model, props, opts)
+  var __fillsSequence = []
+  addFills(__fillsSequence, Model, props, opts)
 
-  async.map(__fills, function(__fill, cb){
-    fillDoc(doc, __fill, cb)
-  }, function(err){
+  async.mapSeries(__fillsSequence, (__fills, cb) => {
+    async.map(__fills, function(__fill, cb){
+      fillDoc(doc, __fill, cb)
+    }, cb)
+  }, (err) => {
     cb && cb(err, doc)
   })
 

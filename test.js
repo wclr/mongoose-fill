@@ -158,7 +158,6 @@ test('fill on instance: mood, actions, surname', function (t) {
 })
 
 test('fill property using multi: surnames', function (t) {
-
   User
     .find({name: {$exists: true}})
     //.sort('accounts')
@@ -172,21 +171,6 @@ test('fill property using multi: surnames', function (t) {
       t.is(users[0].accounts.length, 2, 'user1 accounts count ok')
       t.is(users[0].accounts[0].upper, 'FB_Y', 'user1 accounts count ok')
       t.is(users[1].surname, surnames[users[1].id - 1], 'user2 surname ok ok')
-    t.end()
-
-  }, t.error)
-})
-
-test('fill property using multi: surnames', function (t) {
-
-  User
-    .find({name: {$exists: true}})
-    //.sort('accounts')
-    .limit(5)
-    .fill('accounts surname').then(function(users){
-    t.ok(users.length == 2, 'user count ok')
-    t.is(users[0].surname, surnames[users[0].id - 1], 'user1 surname ok ok')
-    t.is(users[1].surname, surnames[users[1].id - 1], 'user2 surname ok ok')
     t.end()
 
   }, t.error)
