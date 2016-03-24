@@ -190,6 +190,16 @@ test('fill friend nested', function (t) {
     }, t.error)
 })
 
+test('should not fill absent property', function (t) {
+  User
+    .find({name: {$exists: true}})
+    .fill('enemy.accounts.upper', '_X')
+    .then(function(users){
+      t.ok(!users[0].enemy, 'user1 enemy is empty')
+      t.end()
+
+    }, t.error)
+})
 
 test('the end', function (t) {
   t.end()

@@ -98,10 +98,14 @@ var addFills = function(__fillsSequence, Model, props, opts, unshift) {
         if (checkAlreadyHasFillProp(__fillsSequence, prop)){
           return
         }
-        addFills(
-          __fillsSequence, Model,
-          [propSplit.slice(0, -1).join('.')]
-        )
+        let propToFill = propSplit.slice(0, -1).join('.')
+        
+        if (propToFill.indexOf('.') > 0 || Model.__fill[propToFill]) {
+          addFills(
+            __fillsSequence, Model,
+            [propToFill]
+          )
+        }
         var fieldProp = propSplit.shift()
         fill = {
           prop: prop,
