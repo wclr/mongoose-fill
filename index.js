@@ -82,7 +82,7 @@ var addFills = function(__fillsSequence, Model, props, opts, unshift) {
   props = (typeof props == 'string') ? props.split(' ') : props
   props.forEach((prop) => {
     prop = prop.trim()
-    var fill = Model.__fill[prop]
+    var fill = Model.__fill && Model.__fill[prop]
     if (fill){
       var __fill = checkAlreadyHasFill(__fillsSequence, fill)
       if (__fill){
@@ -100,7 +100,7 @@ var addFills = function(__fillsSequence, Model, props, opts, unshift) {
         }
         let propToFill = propSplit.slice(0, -1).join('.')
         
-        if (propToFill.indexOf('.') > 0 || Model.__fill[propToFill]) {
+        if (propToFill.indexOf('.') > 0 || (Model.__fill && Model.__fill[propToFill])) {
           addFills(
             __fillsSequence, Model,
             [propToFill]
@@ -403,7 +403,6 @@ mongoose.Model.prototype.fill = function() {
 
   return this
 }
-
 
 mongoose.Model.prototype.filled = function(){
 
