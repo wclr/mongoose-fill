@@ -380,30 +380,36 @@ mongoose.Query.prototype.fillEach = function() {
   return this
 }
 
-mongoose.Model.prototype.fill = function() {
+function prototypeFill (doc, Model) {
+  return function () {
+    var args = Array.prototype.slice.call(arguments);
+    var props = args.shift()
+    var cb = typeof args[args.length - 1] == 'function' && args.pop()
+    var opts = args
 
-  var doc = this;
-  var Model = this.constructor;
+    var __fillsSequence = []
+    addFills(__fillsSequence, Model, props, opts)
 
-  var args = Array.prototype.slice.call(arguments);
-  var props = args.shift()
-  var cb = typeof args[args.length - 1] == 'function' && args.pop()
-  var opts = args
+    async.mapSeries(__fillsSequence, (__fills, cb) => {
+      async.map(__fills, function(__fill, cb){
+        fillDoc(doc, __fill, cb)
+      }, cb)
+    }, (err) => {
+      cb && cb(err, doc)
+    })
 
-  var __fillsSequence = []
-  addFills(__fillsSequence, Model, props, opts)
-
-  async.mapSeries(__fillsSequence, (__fills, cb) => {
-    async.map(__fills, function(__fill, cb){
-      fillDoc(doc, __fill, cb)
-    }, cb)
-  }, (err) => {
-    cb && cb(err, doc)
-  })
-
-  return this
+    return doc
+  }
+}
+mongoose.Model.prototype.fill = function(){
+  return prototypeFill(this, this.constructor).apply(this, arguments)
 }
 
+mongoose.Types.Embedded.prototype.fill = function(){
+  return prototypeFill(this, this.schema.statics).apply(this, arguments)
+}
+
+mongoose.Types.Embedded.prototype.filled =
 mongoose.Model.prototype.filled = function(){
 
   var args = Array.prototype.slice.call(arguments);
