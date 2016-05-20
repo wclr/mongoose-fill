@@ -3,6 +3,7 @@
 var mongoose = require('mongoose');
 var async = require('async')
 var util = require('util')
+var Promise = mongoose.PromiseProvider.get()
 
 var getArgsWithOptions = function(__fill){
   var args = [],
@@ -164,22 +165,25 @@ mongoose.Query.prototype.exec = function (op, cb) {
   if (!__fillsSequence.length) {
     return _exec.apply(this, arguments);
   }
-  var promise = new mongoose.Promise();
+  return new Promise.ES6(function (resolve, reject) {
 
-  if (typeof op === 'function') {
-    cb = op;
-    op = null;
-  }
+    if (typeof op === 'function') {
+      cb = op;
+      op = null;
+    }
 
-  if (cb) {
-    promise.onResolve(cb);
-  }
-  
-  _exec.call(this, op, function (err, docs) {
+    _exec.call(query, op, function (err, docs) {
 
-    if (err || !docs) {
-      promise.resolve(err, docs);
-    } else {
+      if (err) {
+        cb && cb(err)
+        reject(err)
+        return
+      }
+      if (!docs) {
+        cb && cb(null, docs)
+        resolve(docs)
+        return
+      }
 
       async.mapSeries(__fillsSequence, function(__fills, cb){
 
@@ -288,12 +292,16 @@ mongoose.Query.prototype.exec = function (op, cb) {
           cb(err)
         })
       }, function(err){
-        promise.resolve(err, docs);
+        if (err) {
+          cb && cb(err)
+          reject(err)
+          return
+        }
+        cb && cb(null, docs)
+        resolve(docs)
       })
-    }
-  });
-
-  return promise;
+    })
+  })
 }
 
 mongoose.Schema.prototype.fill = function(props, def) {
