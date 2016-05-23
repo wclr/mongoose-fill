@@ -54,7 +54,6 @@ userSchema.fill('accounts').value(function(callback){
 
 
 userSchema.fill('actions mood', function(upperCase, prefix, callback){
-  //console.log('actions mood', arg1, arg2, callback)
   const mood = prefix + 'good'
   callback(null, {
     actions: ['eat', 'pray', 'kill'],
@@ -63,7 +62,6 @@ userSchema.fill('actions mood', function(upperCase, prefix, callback){
 }).options(false , 'super')
 
 userSchema.fill('purchases', function(callback){
-  console.log('fill: purchases');
   callback(null, [{amount: 5}, {amount: 10}])
 })
 

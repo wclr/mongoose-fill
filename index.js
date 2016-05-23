@@ -165,6 +165,24 @@ mongoose.Query.prototype.exec = function (op, cb) {
     return _exec.apply(this, arguments);
   }
   var promise = new mongoose.Promise();
+  var onResolve, resolve, reject
+
+  if (mongoose.PromiseProvider){
+    let Promise = mongoose.PromiseProvider.get()
+    promise = new Promise.ES6((_resolve, _reject) => {
+      onResolve = () => {}
+      resolve = (err, res) => {
+        err ? _reject(err) : _resolve(res)
+        cb && cb(err, res)
+      }
+      reject = _reject
+    })
+  } else {
+    promise = new mongoose.Promise();
+    onResolve = promise.onResolve.bind(promise)
+    resolve = promise.resolve.bind(promise)
+    reject = promise.reject.bind(promise)
+  }
 
   if (typeof op === 'function') {
     cb = op;
@@ -172,13 +190,13 @@ mongoose.Query.prototype.exec = function (op, cb) {
   }
 
   if (cb) {
-    promise.onResolve(cb);
+    onResolve(cb)
   }
   
   _exec.call(this, op, function (err, docs) {
 
     if (err || !docs) {
-      promise.resolve(err, docs);
+      resolve(err, docs)
     } else {
 
       async.mapSeries(__fillsSequence, function(__fills, cb){
@@ -288,12 +306,12 @@ mongoose.Query.prototype.exec = function (op, cb) {
           cb(err)
         })
       }, function(err){
-        promise.resolve(err, docs);
+        resolve(err, docs)
       })
     }
   });
 
-  return promise;
+  return promise
 }
 
 mongoose.Schema.prototype.fill = function(props, def) {
