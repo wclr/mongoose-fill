@@ -164,24 +164,22 @@ mongoose.Query.prototype.exec = function (op, cb) {
   if (!__fillsSequence.length) {
     return _exec.apply(this, arguments);
   }
-  var promise
-  var onResolve, resolve, reject
+
+  var promise, onResolve, resolve
 
   if (mongoose.PromiseProvider){
-    let Promise = mongoose.PromiseProvider.get()
+    var Promise = mongoose.PromiseProvider.get()
     promise = new Promise.ES6((_resolve, _reject) => {
       onResolve = () => {}
       resolve = (err, res) => {
         err ? _reject(err) : _resolve(res)
         cb && cb(err, res)
       }
-      reject = _reject
     })
   } else {
     promise = new mongoose.Promise();
     onResolve = promise.onResolve.bind(promise)
     resolve = promise.resolve.bind(promise)
-    reject = promise.reject.bind(promise)
   }
 
   if (typeof op === 'function') {
