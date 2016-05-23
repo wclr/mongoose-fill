@@ -164,7 +164,7 @@ mongoose.Query.prototype.exec = function (op, cb) {
   if (!__fillsSequence.length) {
     return _exec.apply(this, arguments);
   }
-  var promise = new mongoose.Promise();
+  var promise
   var onResolve, resolve, reject
 
   if (mongoose.PromiseProvider){
