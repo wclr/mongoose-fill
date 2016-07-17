@@ -167,9 +167,9 @@ mongoose.Query.prototype.exec = function (op, cb) {
 
   var promise, onResolve, resolve
 
-  if (mongoose.PromiseProvider){
-    var Promise = mongoose.PromiseProvider.get()
-    promise = new Promise.ES6((_resolve, _reject) => {
+  if (global.Promise || mongoose.PromiseProvider) {
+    var Promise = global.Promise || mongoose.PromiseProvider.get().ES6
+    promise = new Promise((_resolve, _reject) => {
       onResolve = () => {}
       resolve = (err, res) => {
         err ? _reject(err) : _resolve(res)

@@ -22,6 +22,7 @@ const petSchema = new mongoose.Schema({
 
 
 accountSchema.fill('upper', function(add, callback){
+  this.db.model('User')
   callback(null, this.name.toUpperCase() + add)
 }).options('_Y')
 
@@ -34,6 +35,7 @@ const makeAccounts = (names) => {
 
 
 userSchema.fill('surname', function(callback){
+  this.db.model('User')
   const val = surnames[this._id - 1]
   callback(null, val)
 }).multi(function(users, ids, callback){
