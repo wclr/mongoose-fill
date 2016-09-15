@@ -236,7 +236,14 @@ test('should fill nested on model that has no fill property', async t => {
   }
 })
 
+test('should fill nested on model that has no fill property (promise)', t => {  
+  const pet = new Pet({master: new User({name: 'Alex', _id: 1})})
+  pet.fill('master.accounts').then((pet) => {
+    t.is(pet.master.accounts.length, 2, 'pet.master.accounts filled')
+    t.end()
+  }, t.error)      
+})
 
-test('the end', async t => {
-  t.end();
+test.onFinish(() => {
+  process.exit()
 })

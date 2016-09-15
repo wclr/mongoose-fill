@@ -149,6 +149,29 @@ var addFills = function(__fillsSequence, Model, props, opts, unshift) {
 
 var _exec = mongoose.Query.prototype.exec
 
+var getPromise = function (cb) {
+  var promise, onResolve, resolve
+  if (global.Promise || mongoose.PromiseProvider) {
+    var Promise = global.Promise || mongoose.PromiseProvider.get().ES6
+    promise = new Promise((_resolve, _reject) => {
+      onResolve = () => {}
+      resolve = (err, res) => {
+        err ? _reject(err) : _resolve(res)
+        cb && cb(err, res)
+      }
+    })
+  } else {
+    promise = new mongoose.Promise();
+    onResolve = promise.onResolve.bind(promise)
+    resolve = promise.resolve.bind(promise)
+  }
+  return {
+    promise: promise, 
+    onResolve: onResolve, 
+    resolve: resolve
+  }
+}
+
 mongoose.Query.prototype.exec = function (op, cb) {
   var __fillsSequence = this.__fillsSequence || []
   var query = this
@@ -164,23 +187,8 @@ mongoose.Query.prototype.exec = function (op, cb) {
   if (!__fillsSequence.length) {
     return _exec.apply(this, arguments);
   }
-
-  var promise, onResolve, resolve
-
-  if (global.Promise || mongoose.PromiseProvider) {
-    var Promise = global.Promise || mongoose.PromiseProvider.get().ES6
-    promise = new Promise((_resolve, _reject) => {
-      onResolve = () => {}
-      resolve = (err, res) => {
-        err ? _reject(err) : _resolve(res)
-        cb && cb(err, res)
-      }
-    })
-  } else {
-    promise = new mongoose.Promise();
-    onResolve = promise.onResolve.bind(promise)
-    resolve = promise.resolve.bind(promise)
-  }
+  var p = getPromise()
+  var promise = p.promise, onResolve = p.onResolve, resolve = p.resolve
 
   if (typeof op === 'function') {
     cb = op;
@@ -403,18 +411,22 @@ function prototypeFill (doc, Model) {
     var cb = typeof args[args.length - 1] == 'function' && args.pop()
     var opts = args
 
+    var Promise = global.Promise || mongoose.PromiseProvider.get().ES6
+
     var __fillsSequence = []
     addFills(__fillsSequence, Model, props, opts)
+
+    let p = getPromise(cb)
 
     async.mapSeries(__fillsSequence, (__fills, cb) => {
       async.map(__fills, function(__fill, cb){
         fillDoc(doc, __fill, cb)
       }, cb)
     }, (err) => {
-      cb && cb(err, doc)
+      p.resolve(err, doc)
     })
 
-    return doc
+    return p.promise
   }
 }
 mongoose.Model.prototype.fill = function(){
