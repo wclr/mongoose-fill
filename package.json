@@ -1,6 +1,6 @@
 {
   "name": "mongoose-fill",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Mongoose.js add-on that adds virtual (temporary) async fileds API",
   "main": "index.js",
   "scripts": {

@@ -187,17 +187,14 @@ mongoose.Query.prototype.exec = function (op, cb) {
   if (!__fillsSequence.length) {
     return _exec.apply(this, arguments);
   }
-  var p = getPromise()
-  var promise = p.promise, onResolve = p.onResolve, resolve = p.resolve
-
+  
   if (typeof op === 'function') {
     cb = op;
     op = null;
   }
 
-  if (cb) {
-    onResolve(cb)
-  }
+  var p = getPromise(cb)
+  var promise = p.promise, onResolve = p.onResolve, resolve = p.resolve
   
   _exec.call(this, op, function (err, docs) {
 
@@ -290,7 +287,6 @@ mongoose.Query.prototype.exec = function (op, cb) {
                     }
                   })
                 }
-                //console.log('mongoose fill multi done', docs)
                 if (useMultiWithSingle){
                   cb(err, docs[0])
                 } else {

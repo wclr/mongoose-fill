@@ -17,6 +17,18 @@ basic use case fills single filed
 // import of 'mongoose-fill' patches mongoose and returns mongoose object, so you can do:
 var mongoose = require('mongoose-fill')
  ...
+// note you should set virtual properties options 
+// on you schema to get it mongoose-fill work
+var myParentSchema = new Schema({
+    ....
+}, {
+  toObject: {
+    virtuals: true
+  },
+  toJSON: {
+    virtuals: true 
+  }
+}
 
 myParentSchema.fill('children', function(callback){
     this.db.model('Child')
@@ -87,9 +99,6 @@ Also check the code of test for more use cases
 - patches mongoose query exec method extending query api with `fill` method
 - implemented using mongoose virtual setters/getters (actual value is stored in `__propName` property)   
 
-
-### Version
-1.0.0
 
 ### Installation
 

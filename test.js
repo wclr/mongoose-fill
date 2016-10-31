@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
   _id: 'number',
   name: 'string',
   age: 'number',
-  dude: {type: 'number', ref: 'User'}
+  dude: { type: 'number', ref: 'User' }
 })
 
 const accountSchema = new mongoose.Schema({
@@ -17,11 +17,11 @@ const accountSchema = new mongoose.Schema({
 const petSchema = new mongoose.Schema({
   _id: 'number',
   name: 'string',
-  master: {type: 'number', ref: 'User'}
+  master: { type: 'number', ref: 'User' }
 })
 
 
-accountSchema.fill('upper', function(add, callback){
+accountSchema.fill('upper', function (add, callback) {
   this.db.model('User')
   callback(null, this.name.toUpperCase() + add)
 }).options('_Y')
@@ -30,23 +30,23 @@ const surnames = ['Galt', 'Dow']
 
 const Account = mongoose.model('Account', accountSchema)
 const makeAccounts = (names) => {
-  return names.map(name => new Account({name: name}))
+  return names.map(name => new Account({ name: name }))
 }
 
 
-userSchema.fill('surname', function(callback){
+userSchema.fill('surname', function (callback) {
   this.db.model('User')
   const val = surnames[this._id - 1]
   callback(null, val)
-}).multi(function(users, ids, callback){
-  const result = ids.map(function(id){
-    return {_id: id, surname: surnames[id - 1]}
+}).multi(function (users, ids, callback) {
+  const result = ids.map(function (id) {
+    return { _id: id, surname: surnames[id - 1] }
   })
 
   callback(null, result)
 })
 
-userSchema.fill('accounts').value(function(callback){
+userSchema.fill('accounts').value(function (callback) {
   const val = [
     makeAccounts(['fb', 'twitter']),
     makeAccounts(['google'])
@@ -55,22 +55,22 @@ userSchema.fill('accounts').value(function(callback){
 }).default([])
 
 
-userSchema.fill('actions mood', function(upperCase, prefix, callback){
+userSchema.fill('actions mood', function (upperCase, prefix, callback) {
   const mood = prefix + 'good'
   callback(null, {
     actions: ['eat', 'pray', 'kill'],
     mood: (upperCase ? mood.toUpperCase() : mood)
   })
-}).options(false , 'super')
+}).options(false, 'super')
 
-userSchema.fill('purchases', function(callback){
-  callback(null, [{amount: 5}, {amount: 10}])
+userSchema.fill('purchases', function (callback) {
+  callback(null, [{ amount: 5 }, { amount: 10 }])
 })
 
-userSchema.fill('friend', function(callback){
+userSchema.fill('friend', function (callback) {
   const val = [
-    new User({_id: 2}),
-    new User({_id: 1})
+    new User({ _id: 2 }),
+    new User({ _id: 1 })
   ][this._id - 1]
   callback(null, val)
 })
@@ -80,8 +80,8 @@ const Pet = mongoose.model('Pet', petSchema)
 
 test('setup', async t => {
   const usersData = [
-    {_id: 1, name: 'Alex', age: 10},
-    {_id: 2, name: 'Jane', age: 12, dude: 1}
+    { _id: 1, name: 'Alex', age: 10 },
+    { _id: 2, name: 'Jane', age: 12, dude: 1 }
   ];
 
   try {
@@ -91,7 +91,7 @@ test('setup', async t => {
   } catch (err) {
     t.error(err);
   }
-});
+})
 
 test('fill one property: purchases', async t => {
   try {
@@ -103,6 +103,15 @@ test('fill one property: purchases', async t => {
   } catch (err) {
     t.error(err);
   }
+})
+
+test('fill one property: purchases (exec callback)', async t => {
+  User.findById(1).fill('purchases').exec((err, user) => {
+    t.ok(user.name == 'Alex', 'user name is ok');
+    t.ok(!!user.purchases, 'user purchases present');
+    t.ok(user.purchases[0].amount == 5, 'first purchase amount is ok');
+    t.end();
+  });
 });
 
 test('fill multiple properties with select: purchases, actions', async t => {
@@ -154,7 +163,7 @@ test('fill on instance: mood, actions, surname', async t => {
 test('fill property using multi: surnames', async t => {
   try {
     const users = await User
-      .find({name: {$exists: true}})
+      .find({ name: { $exists: true } })
       //.sort('accounts')
       .limit(5)
       .fill('accounts surname')
@@ -175,7 +184,7 @@ test('fill property using multi: surnames', async t => {
 test('fill friend nested', async t => {
   try {
     const users = await User
-      .find({name: {$exists: true}})
+      .find({ name: { $exists: true } })
       .fill('friend.accounts.upper', '_X');
     t.ok(users[0].friend, 'user1 friend filled')
     t.ok(users[0].friend.accounts, 'user1 friend.accounts filled')
@@ -190,7 +199,7 @@ test('fill friend nested', async t => {
 test('should not fill absent property', async t => {
   try {
     const users = await User
-      .find({name: {$exists: true}})
+      .find({ name: { $exists: true } })
       .fill('absent.accounts.upper', '_X')
     t.ok(!users[0].enemy, 'user1 enemy is empty')
     t.end()
@@ -202,7 +211,7 @@ test('should not fill absent property', async t => {
 test('should not fill absent property', async t => {
   try {
     const users = await User
-      .find({name: {$exists: true}})
+      .find({ name: { $exists: true } })
       .fill('enemy.accounts.upper', '_X')
     t.ok(!users[0].enemy, 'user1 enemy is empty')
     t.end()
@@ -214,7 +223,7 @@ test('should not fill absent property', async t => {
 test('should fill nested not filled property', async t => {
   try {
     const user = await User
-      .findOne({name: 'Jane'})
+      .findOne({ name: 'Jane' })
       .populate('dude')
       .fill('dude.accounts.upper', '_X')
     t.is(user.dude.name, 'Alex', 'user.dude name is correct')
@@ -227,7 +236,7 @@ test('should fill nested not filled property', async t => {
 
 test('should fill nested on model that has no fill property', async t => {
   try {
-    const pet = new Pet({master: new User({name: 'Alex', _id: 1})})
+    const pet = new Pet({ master: new User({ name: 'Alex', _id: 1 }) })
     await pet.fill('master.accounts')
     t.is(pet.master.accounts.length, 2, 'pet.master.accounts filled')
     t.end()
@@ -236,12 +245,12 @@ test('should fill nested on model that has no fill property', async t => {
   }
 })
 
-test('should fill nested on model that has no fill property (promise)', t => {  
-  const pet = new Pet({master: new User({name: 'Alex', _id: 1})})
+test('should fill nested on model that has no fill property (promise)', t => {
+  const pet = new Pet({ master: new User({ name: 'Alex', _id: 1 }) })
   pet.fill('master.accounts').then((pet) => {
     t.is(pet.master.accounts.length, 2, 'pet.master.accounts filled')
     t.end()
-  }, t.error)      
+  }, t.error)
 })
 
 test.onFinish(() => {
