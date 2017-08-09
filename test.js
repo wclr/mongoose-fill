@@ -75,6 +75,12 @@ userSchema.fill('friend', function (callback) {
   callback(null, val)
 })
 
+userSchema.fill('nested.dude', function (callback) {
+  this.db.model('User')
+        .findOne({_id: this.dude})
+        .exec(callback)
+})
+
 const User = mongoose.model('User', userSchema)
 const Pet = mongoose.model('Pet', petSchema)
 
@@ -190,6 +196,19 @@ test('fill friend nested', async t => {
     t.ok(users[0].friend.accounts, 'user1 friend.accounts filled')
     t.is(users[0].friend.accounts[0].upper, 'GOOGLE_X', 'user1 friend filled')
     t.ok(users[1].friend, 'user2 friend filled')
+    t.end()
+  } catch (err) {
+    t.error(err);
+  }
+})
+
+test('fill nested dude', async t => {
+  try {
+    const users = await User
+      .find({ name: 'Jane' })
+      .fill('nested.dude');
+    t.ok(users[0].nested.dude, 'user2 nested dude filled')
+    t.is(users[0].nested.dude.name, 'Alex', 'user2 nested dude filled')
     t.end()
   } catch (err) {
     t.error(err);

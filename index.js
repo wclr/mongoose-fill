@@ -47,10 +47,10 @@ var fillDoc = function(doc, __fill, cb){
       // if val is not passed, just leave it
       if (arguments.length > 1 && val !== doc){
         if (prop){
-          doc[prop] = multipleProps ? val[prop] : val
+          doc.set(prop, multipleProps ? val[prop] : val)
         } else {
           props.forEach(function(prop){
-            doc[prop] = val[prop]
+            doc.set(prop, val[prop])
           })
         }
       }
