@@ -262,9 +262,6 @@ mongoose.Query.prototype.exec = function (op, cb) {
                   }
 
                   results.forEach(function(r, i){
-                    if (!r){
-                      return
-                    }
                     var doc = docs[i]
 
                     var spreadProps = multipleProps
